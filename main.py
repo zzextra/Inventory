@@ -16,12 +16,10 @@ def invChange(inventory, itemName, userInput):
     else:
         timeStamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         inventory[itemName] = (newValue, timeStamp)
-        print("The new value for", itemName, "is:", newValue, "at", timeStamp)
-
-    return inventory
 
 
     return inventory
+
 
 def loadInventory(filename):
     inventory = {}
@@ -53,13 +51,55 @@ def printInventory(inventory, inventoryList):
         quantity, timeStamp = itemData
         inventoryList.insert('', 'end', values=(itemName, quantity, timeStamp))
 
-
-
     def on_item_double_click(event):
         item = inventoryList.focus()
         selected_item = inventoryList.item(item)
         item_name = selected_item['values'][0]  # Extract the item name from the selected item
-        changeQuantity(inventoryList, inventory, item_name)
+        current_quantity = selected_item['values'][1]  # Extract the current quantity from the selected item
+
+        # Create a new dialog box with Entry widgets for the new name and quantity
+        dialog = tk.Toplevel(root)
+        dialog.title("Edit Item")
+        tk.Label(dialog, text="New Name:").grid(row=0, column=0)
+        tk.Label(dialog, text="New Quantity:").grid(row=1, column=0)
+        new_name_entry = tk.Entry(dialog, width=30)
+        new_name_entry.insert(0, item_name)
+        new_name_entry.grid(row=0, column=1)
+        new_quantity_entry = tk.Entry(dialog, width=10)
+        new_quantity_entry.insert(0, current_quantity)
+        new_quantity_entry.grid(row=1, column=1)
+
+        # Define a function to update the inventory and inventory list with the new name and quantity
+        def update_item():
+            new_name = new_name_entry.get().strip()
+            new_quantity = new_quantity_entry.get().strip()
+            if not new_name:
+                messagebox.showerror("Error", "Please enter a new name.")
+                return
+            if new_name != item_name and new_name in inventory:
+                messagebox.showerror("Error", "The new item name already exists in the inventory.")
+                return
+            try:
+                new_quantity = int(new_quantity)
+            except ValueError:
+                messagebox.showerror("Error", "Please enter a valid quantity.")
+                return
+            # Update the inventory with the new item name and quantity
+            timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            inventory[new_name] = (new_quantity, timestamp)
+            del inventory[item_name]
+            # Update the selected item in the inventory list
+            values = list(selected_item['values'])
+            values[0] = new_name
+            values[1] = new_quantity
+            values[2] = timestamp
+            inventoryList.item(item, values=values)
+            # Destroy the dialog box
+            dialog.destroy()
+
+        # Add a "Save" button to the dialog box to update the item
+        save_button = tk.Button(dialog, text="Save", command=update_item)
+        save_button.grid(row=2, column=1, pady=10)
 
     inventoryList.bind("<Double-Button-1>", on_item_double_click)
 
@@ -102,7 +142,14 @@ def addItem(inventory, inventoryList):
     itemNameEntry.delete(0, tk.END)
     userInputEntry.delete(0, tk.END)
     itemNameEntry.focus()
+    tk.Label(root, text="Item Name:").grid(row=1, column=0, sticky=tk.W)
+    tk.Label(root, text="Quantity:").grid(row=1, column=2, sticky=tk.W)
 
+    itemNameEntry = tk.Entry(root)
+    userInputEntry = tk.Entry(root)
+
+    itemNameEntry.grid(row=1, column=1, sticky=tk.W + tk.E)
+    userInputEntry.grid(row=1, column=3, sticky=tk.W + tk.E)
 
 #def removeItem():
    # itemName = itemNameEntry.get()
@@ -122,9 +169,13 @@ def quit():
     root.destroy()
 
 
+
 def export_to_pdf(inventory):
     # Create a new PDF document with landscape page orientation
-    pdf = SimpleDocTemplate("inventory.pdf", pagesize=landscape(letter))
+    timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    file_name = f"inventory_{timestamp}.pdf"
+
+    pdf = SimpleDocTemplate(file_name, pagesize=landscape(letter))
 
     # Create the table data with headers
     table_data = [["Item", "Quantity", "Last Update"]]
@@ -144,7 +195,7 @@ def export_to_pdf(inventory):
         ('FONTSIZE', (0, 0), (-1, 0), 14),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 12),
+        ('FONTSIZE', (0, 1), (-1, -1), 14),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.aliceblue, colors.lavender]),
         ('GRID', (0, 0), (-1, -1), 1, colors.black)
     ]))
@@ -152,45 +203,43 @@ def export_to_pdf(inventory):
     # Add the table to the PDF document and build it
     pdf.build([table])
 
+    # Display a message box indicating that the PDF was exported successfully
+    messagebox.showinfo("Export PDF", f"PDF exported successfully as '{file_name}'.")
+
+
 def main():
     global root, inventory, itemNameEntry, userInputEntry, inventoryList
 
     inventory = loadInventory('inventory.csv')
 
     root = tk.Tk()
-    root.title("Inventory Management")
+    root.title("Resource OH Inventory")
+
 
     # Configure rows
     root.grid_rowconfigure(0, weight=0)
     root.grid_rowconfigure(1, weight=0)
-    root.grid_rowconfigure(2, weight=0)
-    root.grid_rowconfigure(3, weight=1)
-    root.grid_rowconfigure(4, weight=0)
+    root.grid_rowconfigure(2, weight=1)
+    root.grid_rowconfigure(3, weight=0)  # New row for buttons
 
     # Configure columns
-    root.grid_columnconfigure(0, weight=0)
-    root.grid_columnconfigure(1, weight=0)
+    root.grid_columnconfigure(0, weight=1)
+    root.grid_columnconfigure(1, weight=1)
     root.grid_columnconfigure(2, weight=1)
     root.grid_columnconfigure(3, weight=1)
 
-    tk.Label(root, text="Item Name:").grid(row=0, column=0, sticky=tk.W)
-    tk.Label(root, text="Quantity:").grid(row=1, column=0, sticky=tk.W)
 
-    itemNameEntry = tk.Entry(root)
-    userInputEntry = tk.Entry(root)
-
-    itemNameEntry.grid(row=0, column=1, sticky=tk.W)
-    userInputEntry.grid(row=1, column=1, sticky=tk.W)
 
     addButton = tk.Button(root, text="Add Item", command=lambda: addItem(inventory, inventoryList))
     saveButton = tk.Button(root, text="Save", command=save)
     quitButton = tk.Button(root, text="Quit", command=quit)
-    exportButton = tk.Button(root, text="Export PDF", command=lambda: export_to_pdf(inventory))  # Added Export PDF button
+    exportButton = tk.Button(root, text="Export PDF",
+                             command=lambda: export_to_pdf(inventory))  # Added Export PDF button
 
-    addButton.grid(row=2, column=0, sticky=tk.W)
-    saveButton.grid(row=2, column=1, sticky=tk.W)
-    exportButton.grid(row=3, column=1, sticky=tk.W)  # Added Export PDF button to the grid
-    quitButton.grid(row=3, column=0, columnspan=1, sticky=tk.W+tk.E)
+    addButton.grid(row=3, column=0, sticky=tk.W + tk.E)
+    saveButton.grid(row=3, column=1, sticky=tk.W + tk.E)  # Moved Save button to row 3
+    exportButton.grid(row=3, column=2, sticky=tk.W + tk.E)  # Moved Export PDF button to row 3
+    quitButton.grid(row=3, column=3, sticky=tk.W + tk.E)  # Moved Quit button to row 3
 
     inventoryList = ttk.Treeview(root, columns=("Item", "Quantity", "Last Update"), show="headings")
     inventoryList.heading("Item", text="Item")
@@ -199,7 +248,7 @@ def main():
     inventoryList.column("Item", width=150, anchor="center")
     inventoryList.column("Quantity", width=100, anchor="center")
     inventoryList.column("Last Update", width=150, anchor="center")
-    inventoryList.grid(row=0, rowspan=5, column=2, columnspan=2, sticky=tk.N+tk.S+tk.E+tk.W)
+    inventoryList.grid(row=2, rowspan=1, column=0, columnspan=4, sticky=tk.N + tk.S + tk.E + tk.W)
 
     printInventory(inventory, inventoryList)
 

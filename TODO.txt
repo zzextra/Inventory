@@ -1,0 +1,8 @@
+Get familiar with editing the layout of tkinter
+add SO/PO fucntions
+ask user for name and display transaction history
+
+add photos
+print inventory count sheet
+Full screen toggle/ Scaling
+Add item change to open menu
