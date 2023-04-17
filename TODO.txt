@@ -6,3 +6,4 @@ add photos
 print inventory count sheet
 Full screen toggle/ Scaling
 Add item change to open menu
+broken log system

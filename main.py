@@ -7,18 +7,50 @@ from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from tkinter import messagebox
-
-def invChange(inventory, itemName, userInput):
-    newValue = inventory.get(itemName, (0, None))[0] + int(userInput)
-
-    if newValue < 0:
-        print("Error: The new value is negative. Please enter a positive number.")
-    else:
-        timeStamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        inventory[itemName] = (newValue, timeStamp)
+import os
 
 
-    return inventory
+
+def open_add_item_window(inventory, inventoryList, log_file):
+    add_item_window = tk.Toplevel(root)
+    add_item_window.title("Add Item")
+    addItem(inventory, inventoryList, add_item_window, log_file)
+
+
+def addItem(inventory, inventoryList, add_item_window, log_file):
+    tk.Label(add_item_window, text="Item Name:").grid(row=0, column=0, sticky=tk.W)
+    tk.Label(add_item_window, text="Quantity:").grid(row=1, column=0, sticky=tk.W)
+
+    itemNameEntry = tk.Entry(add_item_window)
+    userInputEntry = tk.Entry(add_item_window)
+
+    itemNameEntry.grid(row=0, column=1, sticky=tk.W + tk.E)
+    userInputEntry.grid(row=1, column=1, sticky=tk.W + tk.E)
+
+    def addItemToList():
+        itemName = itemNameEntry.get()
+        userInput = userInputEntry.get()
+        if itemName and userInput:
+            try:
+                quantity = int(userInput)
+            except ValueError:
+                messagebox.showerror("Error", "Please enter a valid quantity.")
+                return
+            timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            if itemName in inventory:
+                old_quantity, old_timestamp = inventory[itemName]
+                new_quantity = old_quantity + quantity
+                inventory[itemName] = (new_quantity, timestamp)
+            else:
+                inventory[itemName] = (quantity, timestamp)
+            printInventory(inventory, inventoryList, log_file)
+            itemNameEntry.delete(0, tk.END)
+            userInputEntry.delete(0, tk.END)
+            add_item_window.destroy()
+
+    addButton = tk.Button(add_item_window, text="Add", command=addItemToList)
+    addButton.grid(row=2, column=1, sticky=tk.W + tk.E)
+
 
 
 def loadInventory(filename):
@@ -33,6 +65,7 @@ def loadInventory(filename):
 
     return inventory
 
+
 def saveInventory(filename, inventory):
     with open(filename, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile, delimiter=',')
@@ -42,114 +75,71 @@ def saveInventory(filename, inventory):
             writer.writerow([itemName, quantity, timeStamp])
 
 
+def on_item_double_click(event, inventory, inventoryList, log_file):
+    item = inventoryList.focus()
+    selected_item = inventoryList.item(item)
+    item_name = selected_item['values'][0]  # Extract the item name from the selected item
+    changeQuantity(inventoryList, inventory, item_name, log_file)
 
-def printInventory(inventory, inventoryList):
-    for i in inventoryList.get_children():
-        inventoryList.delete(i)
 
-    for itemName, itemData in inventory.items():
-        quantity, timeStamp = itemData
-        inventoryList.insert('', 'end', values=(itemName, quantity, timeStamp))
+def printInventory(inventory, inventoryList, log_file=None):
+    inventoryList.delete(*inventoryList.get_children())
+    for item in inventory:
+        quantity, timestamp = inventory[item]
+        inventoryList.insert("", "end", values=(item, quantity, timestamp))
 
-    def on_item_double_click(event):
-        item = inventoryList.focus()
-        selected_item = inventoryList.item(item)
-        item_name = selected_item['values'][0]  # Extract the item name from the selected item
-        current_quantity = selected_item['values'][1]  # Extract the current quantity from the selected item
+    # Log the inventory to the log file
+    if log_file:
+        log_writer = csv.writer(log_file)
+        for item in inventory:
+            quantity, timestamp = inventory[item]
+            log_writer.writerow([item, quantity, timestamp])
 
-        # Create a new dialog box with Entry widgets for the new name and quantity
-        dialog = tk.Toplevel(root)
-        dialog.title("Edit Item")
-        tk.Label(dialog, text="New Name:").grid(row=0, column=0)
-        tk.Label(dialog, text="New Quantity:").grid(row=1, column=0)
-        new_name_entry = tk.Entry(dialog, width=30)
-        new_name_entry.insert(0, item_name)
-        new_name_entry.grid(row=0, column=1)
-        new_quantity_entry = tk.Entry(dialog, width=10)
-        new_quantity_entry.insert(0, current_quantity)
-        new_quantity_entry.grid(row=1, column=1)
-
-        # Define a function to update the inventory and inventory list with the new name and quantity
         def update_item():
-            new_name = new_name_entry.get().strip()
-            new_quantity = new_quantity_entry.get().strip()
-            if not new_name:
-                messagebox.showerror("Error", "Please enter a new name.")
-                return
-            if new_name != item_name and new_name in inventory:
-                messagebox.showerror("Error", "The new item name already exists in the inventory.")
-                return
-            try:
-                new_quantity = int(new_quantity)
-            except ValueError:
-                messagebox.showerror("Error", "Please enter a valid quantity.")
-                return
-            # Update the inventory with the new item name and quantity
-            timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            inventory[new_name] = (new_quantity, timestamp)
-            del inventory[item_name]
-            # Update the selected item in the inventory list
-            values = list(selected_item['values'])
-            values[0] = new_name
-            values[1] = new_quantity
-            values[2] = timestamp
-            inventoryList.item(item, values=values)
-            # Destroy the dialog box
-            dialog.destroy()
+            global inventory, inventoryList, log_file
+            item = inventoryList.focus()
+            selected_item = inventoryList.item(item)
+            item_name = selected_item['values'][0]  # Extract the item name from the selected item
+            user_input = sd.askstring("Update Item", "Enter a new name and quantity for " + str(
+                item_name) + " separated by a comma (,)")
+            if user_input is not None:
+                new_item_name, new_quantity = user_input.split(",")
+                new_item_name = new_item_name.strip()
+                new_quantity = int(new_quantity.strip())
+                if not new_item_name:
+                    messagebox.showerror("Error", "Please enter a new item name.")
+                    return
+                if new_quantity < 0:
+                    messagebox.showerror("Error", "Please enter a valid quantity.")
+                    return
+                timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                old_quantity, old_timestamp = inventory[item_name]
+                inventory[new_item_name] = (new_quantity, timestamp)
+                del inventory[item_name]
 
-        # Add a "Save" button to the dialog box to update the item
-        save_button = tk.Button(dialog, text="Save", command=update_item)
-        save_button.grid(row=2, column=1, pady=10)
+                # Log the change to the log file
+                log_writer = csv.writer(log_file)
+                log_writer.writerow([item_name, new_item_name, old_quantity, new_quantity, old_timestamp, timestamp])
 
-    inventoryList.bind("<Double-Button-1>", on_item_double_click)
+                printInventory(inventory, inventoryList, log_file)
 
 
-def changeQuantity(inventoryList, inventory, item_name):
-    current_quantity, _ = inventory.get(item_name, (0, None))
-    user_input = sd.askinteger("Change Quantity", "Enter a new quantity for " + str(item_name))
+def changeQuantity(inventoryList, inventory, item_name, log_file=None):
+    current_quantity, current_timestamp = inventory[item_name]
+    user_input = sd.askinteger("Change Quantity", "Enter a new quantity for " + str(item_name), initialvalue=current_quantity)
     if user_input is not None:
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        inventory[item_name] = (user_input, timestamp)
-        printInventory(inventory, inventoryList)
+        if user_input < 0:
+            messagebox.showerror("Error", "Please enter a valid quantity.")
+            return
+        inventory[item_name] = (user_input, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        printInventory(inventory, inventoryList, log_file)
 
 
 def save():
     saveInventory('inventory.csv', inventory)
 
-def addItem(inventory, inventoryList):
-    global itemNameEntry, userInputEntry
 
-    itemName = itemNameEntry.get().strip()
-    userInput = userInputEntry.get().strip()
 
-    if not itemName:
-        messagebox.showerror("Error", "Please enter an item name.")
-        return
-
-    if not userInput:
-        messagebox.showerror("Error", "Please enter a quantity.")
-        return
-
-    try:
-        userInput = int(userInput)
-    except ValueError:
-        messagebox.showerror("Error", "Please enter a valid quantity.")
-        return
-
-    invChange(inventory, itemName, userInput)
-    printInventory(inventory, inventoryList)
-
-    itemNameEntry.delete(0, tk.END)
-    userInputEntry.delete(0, tk.END)
-    itemNameEntry.focus()
-    tk.Label(root, text="Item Name:").grid(row=1, column=0, sticky=tk.W)
-    tk.Label(root, text="Quantity:").grid(row=1, column=2, sticky=tk.W)
-
-    itemNameEntry = tk.Entry(root)
-    userInputEntry = tk.Entry(root)
-
-    itemNameEntry.grid(row=1, column=1, sticky=tk.W + tk.E)
-    userInputEntry.grid(row=1, column=3, sticky=tk.W + tk.E)
 
 #def removeItem():
    # itemName = itemNameEntry.get()
@@ -208,19 +198,40 @@ def export_to_pdf(inventory):
 
 
 def main():
-    global root, inventory, itemNameEntry, userInputEntry, inventoryList
+    global root, inventory, inventoryList, log_file
 
     inventory = loadInventory('inventory.csv')
+    log_file = open('inventory_log.csv', 'a', newline='')
+    log_writer = csv.writer(log_file)
+
+    if not os.path.isfile('inventory_log.csv') or os.path.getsize('inventory_log.csv') == 0:
+        # Write the header row to the log file if it's empty
+        log_writer.writerow(['Item', 'New Value', 'Timestamp'])
 
     root = tk.Tk()
     root.title("Resource OH Inventory")
+
+    # Check if the inventory file exists, create it if it doesn't
+    if not os.path.isfile('inventory.csv') or os.path.getsize('inventory.csv') == 0:
+        with open('inventory.csv', 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['item_name', 'quantity', 'timestamp'])
+
+    # Check if the log file exists, create it if it doesn't
+    if not os.path.isfile('inventory_log.csv') or os.path.getsize('inventory_log.csv') == 0:
+        with open('inventory_log.csv', 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['old_name', 'new_name', 'old_quantity', 'new_quantity', 'old timestamp', 'new timestamp'])
+
+
 
 
     # Configure rows
     root.grid_rowconfigure(0, weight=0)
     root.grid_rowconfigure(1, weight=0)
     root.grid_rowconfigure(2, weight=1)
-    root.grid_rowconfigure(3, weight=0)  # New row for buttons
+    root.grid_rowconfigure(3, weight=0)
+    root.grid_rowconfigure(4, weight=0)   # New row for buttons
 
     # Configure columns
     root.grid_columnconfigure(0, weight=1)
@@ -228,18 +239,26 @@ def main():
     root.grid_columnconfigure(2, weight=1)
     root.grid_columnconfigure(3, weight=1)
 
+    addButton = tk.Button(root, text="Add Item", command=lambda: open_add_item_window(inventory, inventoryList, log_file))
 
-
-    addButton = tk.Button(root, text="Add Item", command=lambda: addItem(inventory, inventoryList))
     saveButton = tk.Button(root, text="Save", command=save)
     quitButton = tk.Button(root, text="Quit", command=quit)
     exportButton = tk.Button(root, text="Export PDF",
                              command=lambda: export_to_pdf(inventory))  # Added Export PDF button
+    quit1Button = tk.Button(root, text="Placeholder", command=quit)
+    quit2Button = tk.Button(root, text="Placeholder", command=quit)
+    quit3Button = tk.Button(root, text="Placeholder", command=quit)
+    quit4Button = tk.Button(root, text="Placeholder", command=quit)
 
     addButton.grid(row=3, column=0, sticky=tk.W + tk.E)
     saveButton.grid(row=3, column=1, sticky=tk.W + tk.E)  # Moved Save button to row 3
     exportButton.grid(row=3, column=2, sticky=tk.W + tk.E)  # Moved Export PDF button to row 3
     quitButton.grid(row=3, column=3, sticky=tk.W + tk.E)  # Moved Quit button to row 3
+
+    quit1Button.grid(row=4, column=0, sticky=tk.W + tk.E)
+    quit2Button.grid(row=4, column=1, sticky=tk.W + tk.E)  # Moved Save button to row 3
+    quit3Button.grid(row=4, column=2, sticky=tk.W + tk.E)  # Moved Export PDF button to row 3
+    quit4Button.grid(row=4, column=3, sticky=tk.W + tk.E)  # Moved Quit button to row 3
 
     inventoryList = ttk.Treeview(root, columns=("Item", "Quantity", "Last Update"), show="headings")
     inventoryList.heading("Item", text="Item")
@@ -250,10 +269,14 @@ def main():
     inventoryList.column("Last Update", width=150, anchor="center")
     inventoryList.grid(row=2, rowspan=1, column=0, columnspan=4, sticky=tk.N + tk.S + tk.E + tk.W)
 
-    printInventory(inventory, inventoryList)
+    # Add this line to bind the double-click event to the on_item_double_click function
+    inventoryList.bind("<Double-1>", lambda event: on_item_double_click(event, inventory, inventoryList, log_file))
+
+
+    printInventory(inventory, inventoryList, log_file)
 
     root.mainloop()
-
+    log_file.close()
 
 
 if __name__ == '__main__':
