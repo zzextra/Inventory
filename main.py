@@ -247,10 +247,11 @@ def main():
     about_menu.add_command(label="About", command=aboutSection)
 
     root.config(menu=menu_bar)
+
     # Configure rows
     root.grid_rowconfigure(0, weight=0)
     root.grid_rowconfigure(1, weight=0)
-    root.grid_rowconfigure(2, weight=1)
+    root.grid_rowconfigure(2, weight=0)
     root.grid_rowconfigure(3, weight=0)
     root.grid_rowconfigure(4, weight=0)   # New row for buttons
 
@@ -264,31 +265,30 @@ def main():
 
     saveButton = tk.Button(root, text="Save", command=save)
     quitButton = tk.Button(root, text="Quit", command=quit)
-    exportButton = tk.Button(root, text="Export PDF",
-                             command=lambda: export_to_pdf(inventory))  # Added Export PDF button
+    exportButton = tk.Button(root, text="Export PDF", command=lambda: export_to_pdf(inventory))  # Added Export PDF button
     quit1Button = tk.Button(root, text="Placeholder", command=quit)
     quit2Button = tk.Button(root, text="Placeholder", command=quit)
     quit3Button = tk.Button(root, text="Placeholder", command=quit)
     quit4Button = tk.Button(root, text="Placeholder", command=quit)
 
-    addButton.grid(row=3, column=0, sticky=tk.W + tk.E)
-    saveButton.grid(row=3, column=1, sticky=tk.W + tk.E)  # Moved Save button to row 3
-    exportButton.grid(row=3, column=2, sticky=tk.W + tk.E)  # Moved Export PDF button to row 3
-    quitButton.grid(row=3, column=3, sticky=tk.W + tk.E)  # Moved Quit button to row 3
+    addButton.grid(row=3, column=0, sticky=tk.W + tk.E, pady=5, padx=5)
+    saveButton.grid(row=3, column=1, sticky=tk.W + tk.E, pady=5, padx=5)  # Moved Save button to row 3
+    exportButton.grid(row=3, column=2, sticky=tk.W + tk.E, pady=5, padx=5)  # Moved Export PDF button to row 3
+    quitButton.grid(row=3, column=3, sticky=tk.W + tk.E, pady=5, padx=5)  # Moved Quit button to row 3
 
-    quit1Button.grid(row=4, column=0, sticky=tk.W + tk.E)
-    quit2Button.grid(row=4, column=1, sticky=tk.W + tk.E)  # Moved Save button to row 3
-    quit3Button.grid(row=4, column=2, sticky=tk.W + tk.E)  # Moved Export PDF button to row 3
-    quit4Button.grid(row=4, column=3, sticky=tk.W + tk.E)  # Moved Quit button to row 3
+    quit1Button.grid(row=4, column=0, sticky=tk.W + tk.E, pady=5, padx=5)
+    quit2Button.grid(row=4, column=1, sticky=tk.W + tk.E, pady=5, padx=5)  # Moved Save button to row 3
+    quit3Button.grid(row=4, column=2, sticky=tk.W + tk.E, pady=5, padx=5)  # Moved Export PDF button to row 3
+    quit4Button.grid(row=4, column=3, sticky=tk.W + tk.E, pady=5, padx=5)  # Moved Quit button to row 3
 
     inventoryList = ttk.Treeview(root, columns=("Item", "Quantity", "Last Update"), show="headings")
     inventoryList.heading("Item", text="Item")
     inventoryList.heading("Quantity", text="Quantity")
     inventoryList.heading("Last Update", text="Last Update")
     inventoryList.column("Item", width=150, anchor="center")
-    inventoryList.column("Quantity", width=100, anchor="center")
+    inventoryList.column("Quantity", width=150, anchor="center")
     inventoryList.column("Last Update", width=150, anchor="center")
-    inventoryList.grid(row=2, rowspan=1, column=0, columnspan=4, sticky=tk.N + tk.S + tk.E + tk.W)
+    inventoryList.grid(row=2, rowspan=1, column=0, columnspan=4, sticky=tk.N + tk.S + tk.E + tk.W, pady=20, padx=20)
 
     # Add this line to bind the double-click event to the on_item_double_click function
     inventoryList.bind("<Double-1>", lambda event: on_item_double_click(event, inventory, inventoryList, log_file))
