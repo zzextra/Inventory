@@ -137,15 +137,8 @@ def changeQuantity(inventoryList, inventory, item_name, log_file=None):
 
 def save():
     saveInventory('inventory.csv', inventory)
+    messagebox.showinfo("Save sucessful","You have saved inventory.csv")
 
-
-
-
-#def removeItem():
-   # itemName = itemNameEntry.get()
-   # userInput = '-' + userInputEntry.get()
-   # inventory = invChange(inventory, itemName, userInput)
-   # printInventory(inventory)
 
 def quit():
     save_confirmation = messagebox.askyesnocancel("Quit", "Do you want to save changes before quitting?")
@@ -158,7 +151,13 @@ def quit():
     # User clicked "No" or saved successfully
     root.destroy()
 
-
+def aboutSection():
+    with open('README.md', 'r') as file:
+        # Read the contents of the file
+        file_contents = file.read()
+    new_window = tk.Toplevel(root)
+    new_window.title("About")
+    tk.Label(new_window, text=file_contents).grid(row=0, column=0)
 
 def export_to_pdf(inventory):
     # Create a new PDF document with landscape page orientation
@@ -197,6 +196,8 @@ def export_to_pdf(inventory):
     messagebox.showinfo("Export PDF", f"PDF exported successfully as '{file_name}'.")
 
 
+
+
 def main():
     global root, inventory, inventoryList, log_file
 
@@ -206,9 +207,6 @@ def main():
 
     root = tk.Tk()
     root.title("Resource OH Inventory")
-
-
-
 
     if not os.path.isfile('inventory_log.csv') or os.path.getsize('inventory_log.csv') == 0:
         # Write the header row to the log file if it's empty
@@ -233,29 +231,22 @@ def main():
     root.option_add('*tearOff', False)
 
     menu_bar = tk.Menu(root)
-    root.config(menu=menu_bar)
 
     # Create the "File" menu
     file_menu = tk.Menu(menu_bar)
     menu_bar.add_cascade(label="File", menu=file_menu, )
-
     # Add an item to the "File" menu
-    file_menu.add_command(label="Placeholder", command=save())
-
-    # Create the "Edit" menu
-    edit_menu = tk.Menu(menu_bar)
-    menu_bar.add_cascade(label="Edit", menu=edit_menu)
-
-    # Add an item to the "Edit" menu
-    edit_menu.add_command(label="Placeholder", command=save())
+    file_menu.add_command(label="Save", command=save)
+    file_menu.add_command(label="Add Item", command=lambda: open_add_item_window(inventory, inventoryList, log_file))
+    file_menu.add_command(label="Export PDF", command=lambda: export_to_pdf(inventory))  # Added Export PDF
 
     # Create the "Help" menu
-    help_menu = tk.Menu(menu_bar)
-    menu_bar.add_cascade(label="Help", menu=help_menu)
-
+    about_menu = tk.Menu(menu_bar)
+    menu_bar.add_cascade(label="Help", menu=about_menu, )
     # Add an item to the "Help" menu
-    help_menu.add_command(label="Placeholder", command=save())
+    about_menu.add_command(label="About", command=aboutSection)
 
+    root.config(menu=menu_bar)
     # Configure rows
     root.grid_rowconfigure(0, weight=0)
     root.grid_rowconfigure(1, weight=0)
