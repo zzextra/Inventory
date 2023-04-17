@@ -204,12 +204,17 @@ def main():
     log_file = open('inventory_log.csv', 'a', newline='')
     log_writer = csv.writer(log_file)
 
+    root = tk.Tk()
+    root.title("Resource OH Inventory")
+
+
+
+
     if not os.path.isfile('inventory_log.csv') or os.path.getsize('inventory_log.csv') == 0:
         # Write the header row to the log file if it's empty
         log_writer.writerow(['Item', 'New Value', 'Timestamp'])
 
-    root = tk.Tk()
-    root.title("Resource OH Inventory")
+
 
     # Check if the inventory file exists, create it if it doesn't
     if not os.path.isfile('inventory.csv') or os.path.getsize('inventory.csv') == 0:
@@ -224,7 +229,32 @@ def main():
             writer.writerow(['old_name', 'new_name', 'old_quantity', 'new_quantity', 'old timestamp', 'new timestamp'])
 
 
+    # Create the menu bar
+    root.option_add('*tearOff', False)
 
+    menu_bar = tk.Menu(root)
+    root.config(menu=menu_bar)
+
+    # Create the "File" menu
+    file_menu = tk.Menu(menu_bar)
+    menu_bar.add_cascade(label="File", menu=file_menu, )
+
+    # Add an item to the "File" menu
+    file_menu.add_command(label="Placeholder", command=save())
+
+    # Create the "Edit" menu
+    edit_menu = tk.Menu(menu_bar)
+    menu_bar.add_cascade(label="Edit", menu=edit_menu)
+
+    # Add an item to the "Edit" menu
+    edit_menu.add_command(label="Placeholder", command=save())
+
+    # Create the "Help" menu
+    help_menu = tk.Menu(menu_bar)
+    menu_bar.add_cascade(label="Help", menu=help_menu)
+
+    # Add an item to the "Help" menu
+    help_menu.add_command(label="Placeholder", command=save())
 
     # Configure rows
     root.grid_rowconfigure(0, weight=0)
