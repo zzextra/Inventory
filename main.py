@@ -17,39 +17,51 @@ def open_add_item_window(inventory, inventoryList, log_file):
     addItem(inventory, inventoryList, add_item_window, log_file)
 
 
+
 def addItem(inventory, inventoryList, add_item_window, log_file):
     tk.Label(add_item_window, text="Item Name:").grid(row=0, column=0, sticky=tk.W)
     tk.Label(add_item_window, text="Quantity:").grid(row=1, column=0, sticky=tk.W)
+    tk.Label(add_item_window, text="User:").grid(row=2, column=0, sticky=tk.W)
 
     itemNameEntry = tk.Entry(add_item_window)
     userInputEntry = tk.Entry(add_item_window)
+    userIDEntry = tk.Entry(add_item_window)
 
     itemNameEntry.grid(row=0, column=1, sticky=tk.W + tk.E)
     userInputEntry.grid(row=1, column=1, sticky=tk.W + tk.E)
+    userIDEntry.grid(row=2, column=1, sticky=tk.W + tk.E)
 
     def addItemToList():
         itemName = itemNameEntry.get()
         userInput = userInputEntry.get()
-        if itemName and userInput:
+        userID = userIDEntry.get()  # Retrieve user input
+
+        if itemName and userInput and userID:
             try:
                 quantity = int(userInput)
             except ValueError:
                 messagebox.showerror("Error", "Please enter a valid quantity.")
                 return
+
             timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
             if itemName in inventory:
-                old_quantity, old_timestamp = inventory[itemName]
+                old_quantity, old_timestamp, old_user = inventory[itemName]
                 new_quantity = old_quantity + quantity
-                inventory[itemName] = (new_quantity, timestamp)
+                inventory[itemName] = (new_quantity, timestamp, userID)  # Include user in the tuple
             else:
-                inventory[itemName] = (quantity, timestamp)
+                inventory[itemName] = (quantity, timestamp, userID)
+
             printInventory(inventory, inventoryList, log_file)
             itemNameEntry.delete(0, tk.END)
             userInputEntry.delete(0, tk.END)
+            userIDEntry.delete(0, tk.END)
             add_item_window.destroy()
 
     addButton = tk.Button(add_item_window, text="Add", command=addItemToList)
-    addButton.grid(row=2, column=1, sticky=tk.W + tk.E)
+    addButton.grid(row=3, column=1, sticky=tk.W + tk.E)
+
+# Rest of your code remains unchanged
 
 
 
@@ -58,10 +70,17 @@ def loadInventory(filename):
 
     with open(filename, newline='') as csvfile:
         reader = csv.reader(csvfile, delimiter=',')
-        next(reader)  # skip header row
+        header = next(reader)  # Read the header row
         for row in reader:
-            itemName, quantity, timeStamp = row
-            inventory[itemName] = (int(quantity), timeStamp)
+            if len(row) == len(header):
+                itemName, quantity, timeStamp, user = row
+                inventory[itemName] = (int(quantity), timeStamp, user)
+            elif len(row) == len(header) - 1:
+                itemName, quantity, timeStamp = row
+                inventory[itemName] = (int(quantity), timeStamp)
+            else:
+                # Handle the case when the number of values is incorrect
+                print(f"Skipping invalid row: {row}")
 
     return inventory
 
@@ -69,10 +88,14 @@ def loadInventory(filename):
 def saveInventory(filename, inventory):
     with open(filename, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile, delimiter=',')
-        writer.writerow(['Item', 'Quantity', 'Last Update'])
+        writer.writerow(['Item', 'Quantity', 'Last Update', 'User'])
         for itemName, itemData in inventory.items():
-            quantity, timeStamp = itemData
-            writer.writerow([itemName, quantity, timeStamp])
+            if len(itemData) == 3:
+                quantity, timeStamp, user = itemData
+                writer.writerow([itemName, quantity, timeStamp, user])
+            elif len(itemData) == 2:
+                quantity, timeStamp = itemData
+                writer.writerow([itemName, quantity, timeStamp])
 
 
 def on_item_double_click(event, inventory, inventoryList, log_file):
@@ -85,15 +108,20 @@ def on_item_double_click(event, inventory, inventoryList, log_file):
 def printInventory(inventory, inventoryList, log_file=None):
     inventoryList.delete(*inventoryList.get_children())
     for item in inventory:
-        quantity, timestamp = inventory[item]
-        inventoryList.insert("", "end", values=(item, quantity, timestamp))
+        item_data = inventory[item]
+        quantity, timestamp, user_id = item_data if len(item_data) == 3 else (item_data[0], item_data[1], None)
+        inventoryList.insert("", "end", values=(item, quantity, timestamp, user_id))
 
     # Log the inventory to the log file
     if log_file:
         log_writer = csv.writer(log_file)
-        for item in inventory:
-            quantity, timestamp = inventory[item]
-            log_writer.writerow([item, quantity, timestamp])
+        for item, item_data in inventory.items():
+            quantity, timestamp, user_id = item_data if len(item_data) == 3 else (item_data[0], item_data[1], None)
+            log_writer.writerow([item, quantity, timestamp, user_id])
+
+
+
+
 
         def update_item():
             global inventory, inventoryList, log_file
@@ -125,13 +153,25 @@ def printInventory(inventory, inventoryList, log_file=None):
 
 
 def changeQuantity(inventoryList, inventory, item_name, log_file=None):
-    current_quantity, current_timestamp = inventory[item_name]
-    user_input = sd.askinteger("Change Quantity", "Enter a new quantity for " + str(item_name), initialvalue=current_quantity)
-    if user_input is not None:
+    item_data = inventory[item_name]
+    current_quantity, current_timestamp, current_user_id = item_data if len(item_data) == 3 else (
+    item_data[0], item_data[1], None)
+
+    # Ask for a user ID as a string
+    user_id = sd.askstring("User ID", f"Enter a user ID", initialvalue=current_user_id)
+
+    user_input = sd.askinteger("Change Quantity", f"Enter a new quantity for {item_name}",
+                               initialvalue=current_quantity)
+
+    if user_input is not None and user_id is not None:
         if user_input < 0:
             messagebox.showerror("Error", "Please enter a valid quantity.")
             return
-        inventory[item_name] = (user_input, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
+        # Update the inventory with the correct values
+        inventory[item_name] = (user_input, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), user_id)
+
+        # After updating, print the inventory to reflect changes
         printInventory(inventory, inventoryList, log_file)
 
 
@@ -159,41 +199,46 @@ def aboutSection():
     new_window.title("About")
     tk.Label(new_window, text=file_contents).grid(row=0, column=0)
 
+
 def export_to_pdf(inventory):
-    # Create a new PDF document with landscape page orientation
-    timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    file_name = f"inventory_{timestamp}.pdf"
+    try:
+        # Create a new PDF document with portrait page orientation
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        file_name = f"inventory_{timestamp}.pdf"
 
-    pdf = SimpleDocTemplate(file_name, pagesize=landscape(letter))
+        pdf = SimpleDocTemplate(file_name, pagesize=landscape(letter))
 
-    # Create the table data with headers
-    table_data = [["Item", "Quantity", "Last Update"]]
-    for item_name, item_data in inventory.items():
-        quantity, timestamp = item_data
-        table_data.append([item_name, quantity, timestamp])
+        # Create the table data with headers
+        table_data = [["Item", "Quantity", "Last Update", "User"]]
+        for item_name, item_data in inventory.items():
+            quantity, timestamp, user = item_data if len(item_data) == 3 else (item_data[0], item_data[1], None)
+            table_data.append([item_name, quantity, timestamp, user])
 
-    # Create a Table object with the table data
-    table = Table(table_data)
+        # Create a Table object with the table data
+        table = Table(table_data)
 
-    # Apply table formatting
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 14),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 14),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.aliceblue, colors.lavender]),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-    ]))
+        # Apply table formatting
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 14),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 14),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.aliceblue, colors.lavender]),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
 
-    # Add the table to the PDF document and build it
-    pdf.build([table])
+        # Add the table to the PDF document and build it
+        pdf.build([table])
 
-    # Display a message box indicating that the PDF was exported successfully
-    messagebox.showinfo("Export PDF", f"PDF exported successfully as '{file_name}'.")
+        # Display a message box indicating that the PDF was exported successfully
+        messagebox.showinfo("Export PDF", f"PDF exported successfully as '{file_name}'.")
+
+    except Exception as e:
+        messagebox.showerror("Export PDF Error", f"An error occurred: {str(e)}")
 
 
 
@@ -206,11 +251,11 @@ def main():
     log_writer = csv.writer(log_file)
 
     root = tk.Tk()
-    root.title("Resource OH Inventory")
+    root.title("Inventory")
 
     if not os.path.isfile('inventory_log.csv') or os.path.getsize('inventory_log.csv') == 0:
         # Write the header row to the log file if it's empty
-        log_writer.writerow(['Item', 'New Value', 'Timestamp'])
+        log_writer.writerow(['Item', 'New Value', 'Timestamp', 'User'])
 
 
 
@@ -218,7 +263,7 @@ def main():
     if not os.path.isfile('inventory.csv') or os.path.getsize('inventory.csv') == 0:
         with open('inventory.csv', 'w', newline='') as f:
             writer = csv.writer(f)
-            writer.writerow(['item_name', 'quantity', 'timestamp'])
+            writer.writerow(['item_name', 'quantity', 'timestamp','user'])
 
     # Check if the log file exists, create it if it doesn't
     if not os.path.isfile('inventory_log.csv') or os.path.getsize('inventory_log.csv') == 0:
@@ -266,29 +311,25 @@ def main():
     saveButton = tk.Button(root, text="Save", command=save)
     quitButton = tk.Button(root, text="Quit", command=quit)
     exportButton = tk.Button(root, text="Export PDF", command=lambda: export_to_pdf(inventory))  # Added Export PDF button
-    quit1Button = tk.Button(root, text="Placeholder", command=quit)
-    quit2Button = tk.Button(root, text="Placeholder", command=quit)
-    quit3Button = tk.Button(root, text="Placeholder", command=quit)
-    quit4Button = tk.Button(root, text="Placeholder", command=quit)
+
 
     addButton.grid(row=3, column=0, sticky=tk.W + tk.E, pady=5, padx=5)
     saveButton.grid(row=3, column=1, sticky=tk.W + tk.E, pady=5, padx=5)  # Moved Save button to row 3
     exportButton.grid(row=3, column=2, sticky=tk.W + tk.E, pady=5, padx=5)  # Moved Export PDF button to row 3
     quitButton.grid(row=3, column=3, sticky=tk.W + tk.E, pady=5, padx=5)  # Moved Quit button to row 3
 
-    quit1Button.grid(row=4, column=0, sticky=tk.W + tk.E, pady=5, padx=5)
-    quit2Button.grid(row=4, column=1, sticky=tk.W + tk.E, pady=5, padx=5)  # Moved Save button to row 3
-    quit3Button.grid(row=4, column=2, sticky=tk.W + tk.E, pady=5, padx=5)  # Moved Export PDF button to row 3
-    quit4Button.grid(row=4, column=3, sticky=tk.W + tk.E, pady=5, padx=5)  # Moved Quit button to row 3
 
-    inventoryList = ttk.Treeview(root, columns=("Item", "Quantity", "Last Update"), show="headings")
+
+    inventoryList = ttk.Treeview(root, columns=("Item", "Quantity", "Last Update", 'User'), show="headings")
     inventoryList.heading("Item", text="Item")
     inventoryList.heading("Quantity", text="Quantity")
     inventoryList.heading("Last Update", text="Last Update")
+    inventoryList.heading("User", text="User")
     inventoryList.column("Item", width=150, anchor="center")
     inventoryList.column("Quantity", width=150, anchor="center")
     inventoryList.column("Last Update", width=150, anchor="center")
-    inventoryList.grid(row=2, rowspan=1, column=0, columnspan=4, sticky=tk.N + tk.S + tk.E + tk.W, pady=20, padx=20)
+    inventoryList.column("User", width=150, anchor="center")
+    inventoryList.grid(row=2, rowspan=1, column=0, columnspan=5, sticky=tk.N + tk.S + tk.E + tk.W, pady=20, padx=20)
 
     # Add this line to bind the double-click event to the on_item_double_click function
     inventoryList.bind("<Double-1>", lambda event: on_item_double_click(event, inventory, inventoryList, log_file))
