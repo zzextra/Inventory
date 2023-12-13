@@ -1,3 +1,4 @@
+# Import necessary libraries
 import csv
 import tkinter as tk
 from tkinter import ttk
@@ -7,18 +8,20 @@ from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from tkinter import messagebox
+from tkinter import PhotoImage
 import os
 
 
-
+# Function to open the "Add Item" window
 def open_add_item_window(inventory, inventoryList, log_file):
     add_item_window = tk.Toplevel(root)
     add_item_window.title("Add Item")
     addItem(inventory, inventoryList, add_item_window, log_file)
 
 
-
+# Function to add item to the inventory
 def addItem(inventory, inventoryList, add_item_window, log_file):
+    # Labels and entry widgets for item details
     tk.Label(add_item_window, text="Item Name:").grid(row=0, column=0, sticky=tk.W)
     tk.Label(add_item_window, text="Quantity:").grid(row=1, column=0, sticky=tk.W)
     tk.Label(add_item_window, text="User:").grid(row=2, column=0, sticky=tk.W)
@@ -31,6 +34,7 @@ def addItem(inventory, inventoryList, add_item_window, log_file):
     userInputEntry.grid(row=1, column=1, sticky=tk.W + tk.E)
     userIDEntry.grid(row=2, column=1, sticky=tk.W + tk.E)
 
+    # Function to add the item to the inventory
     def addItemToList():
         itemName = itemNameEntry.get()
         userInput = userInputEntry.get()
@@ -61,10 +65,8 @@ def addItem(inventory, inventoryList, add_item_window, log_file):
     addButton = tk.Button(add_item_window, text="Add", command=addItemToList)
     addButton.grid(row=3, column=1, sticky=tk.W + tk.E)
 
-# Rest of your code remains unchanged
 
-
-
+# Function to load inventory from a CSV file
 def loadInventory(filename):
     inventory = {}
 
@@ -85,6 +87,7 @@ def loadInventory(filename):
     return inventory
 
 
+# Function to save inventory to a CSV file
 def saveInventory(filename, inventory):
     with open(filename, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile, delimiter=',')
@@ -98,6 +101,7 @@ def saveInventory(filename, inventory):
                 writer.writerow([itemName, quantity, timeStamp])
 
 
+# Function to handle double-click on an item in the inventory list
 def on_item_double_click(event, inventory, inventoryList, log_file):
     item = inventoryList.focus()
     selected_item = inventoryList.item(item)
@@ -105,6 +109,7 @@ def on_item_double_click(event, inventory, inventoryList, log_file):
     changeQuantity(inventoryList, inventory, item_name, log_file)
 
 
+# Function to print inventory to the GUI and log to a file
 def printInventory(inventory, inventoryList, log_file=None):
     inventoryList.delete(*inventoryList.get_children())
     for item in inventory:
@@ -120,48 +125,45 @@ def printInventory(inventory, inventoryList, log_file=None):
             log_writer.writerow([item, quantity, timestamp, user_id])
 
 
+# Function to update an item in the inventory
+def update_item():
+    global inventory, inventoryList, log_file
+    item = inventoryList.focus()
+    selected_item = inventoryList.item(item)
+    item_name = selected_item['values'][0]  # Extract the item name from the selected item
+    user_input = sd.askstring("Update Item",
+                              "Enter a new name and quantity for " + str(item_name) + " separated by a comma (,)")
+    if user_input is not None:
+        new_item_name, new_quantity = user_input.split(",")
+        new_item_name = new_item_name.strip()
+        new_quantity = int(new_quantity.strip())
+        if not new_item_name:
+            messagebox.showerror("Error", "Please enter a new item name.")
+            return
+        if new_quantity < 0:
+            messagebox.showerror("Error", "Please enter a valid quantity.")
+            return
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        old_quantity, old_timestamp = inventory[item_name]
+        inventory[new_item_name] = (new_quantity, timestamp)
+        del inventory[item_name]
+
+        # Log the change to the log file
+        log_writer = csv.writer(log_file)
+        log_writer.writerow([item_name, new_item_name, old_quantity, new_quantity, old_timestamp, timestamp])
+
+        printInventory(inventory, inventoryList, log_file)
 
 
-
-        def update_item():
-            global inventory, inventoryList, log_file
-            item = inventoryList.focus()
-            selected_item = inventoryList.item(item)
-            item_name = selected_item['values'][0]  # Extract the item name from the selected item
-            user_input = sd.askstring("Update Item", "Enter a new name and quantity for " + str(
-                item_name) + " separated by a comma (,)")
-            if user_input is not None:
-                new_item_name, new_quantity = user_input.split(",")
-                new_item_name = new_item_name.strip()
-                new_quantity = int(new_quantity.strip())
-                if not new_item_name:
-                    messagebox.showerror("Error", "Please enter a new item name.")
-                    return
-                if new_quantity < 0:
-                    messagebox.showerror("Error", "Please enter a valid quantity.")
-                    return
-                timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                old_quantity, old_timestamp = inventory[item_name]
-                inventory[new_item_name] = (new_quantity, timestamp)
-                del inventory[item_name]
-
-                # Log the change to the log file
-                log_writer = csv.writer(log_file)
-                log_writer.writerow([item_name, new_item_name, old_quantity, new_quantity, old_timestamp, timestamp])
-
-                printInventory(inventory, inventoryList, log_file)
-
-
+# Function to change the quantity of an item in the inventory
 def changeQuantity(inventoryList, inventory, item_name, log_file=None):
     item_data = inventory[item_name]
     current_quantity, current_timestamp, current_user_id = item_data if len(item_data) == 3 else (
     item_data[0], item_data[1], None)
 
     # Ask for a user ID as a string
-    user_id = sd.askstring("User ID", f"Enter a user ID", initialvalue=current_user_id)
-
-    user_input = sd.askinteger("Change Quantity", f"Enter a new quantity for {item_name}",
-                               initialvalue=current_quantity)
+    user_id = sd.askstring("User ID", f"Enter a User ID", initialvalue=current_user_id)
+    user_input = sd.askinteger("Change Quantity", f"Enter a new quantity for {item_name}", initialvalue=current_quantity)
 
     if user_input is not None and user_id is not None:
         if user_input < 0:
@@ -174,12 +176,16 @@ def changeQuantity(inventoryList, inventory, item_name, log_file=None):
         # After updating, print the inventory to reflect changes
         printInventory(inventory, inventoryList, log_file)
 
+#Function to create and order
+def createOrder():
+    print('Order Created')
 
+# Function to save the current state of the inventory
 def save():
     saveInventory('inventory.csv', inventory)
-    messagebox.showinfo("Save sucessful","You have saved inventory.csv")
+    messagebox.showinfo("Save successful", "You have saved inventory.csv")
 
-
+# Function to handle the Quit operation
 def quit():
     save_confirmation = messagebox.askyesnocancel("Quit", "Do you want to save changes before quitting?")
     if save_confirmation is None:
@@ -191,6 +197,7 @@ def quit():
     # User clicked "No" or saved successfully
     root.destroy()
 
+# Function to display information about the application
 def aboutSection():
     with open('README.md', 'r') as file:
         # Read the contents of the file
@@ -199,7 +206,7 @@ def aboutSection():
     new_window.title("About")
     tk.Label(new_window, text=file_contents).grid(row=0, column=0)
 
-
+# Function to export the inventory to a PDF file
 def export_to_pdf(inventory):
     try:
         # Create a new PDF document with portrait page orientation
@@ -236,13 +243,10 @@ def export_to_pdf(inventory):
 
         # Display a message box indicating that the PDF was exported successfully
         messagebox.showinfo("Export PDF", f"PDF exported successfully as '{file_name}'.")
-
     except Exception as e:
         messagebox.showerror("Export PDF Error", f"An error occurred: {str(e)}")
 
-
-
-
+# Main function to initialize the GUI and start the application
 def main():
     global root, inventory, inventoryList, log_file
 
@@ -253,93 +257,75 @@ def main():
     root = tk.Tk()
     root.title("Inventory")
 
-    if not os.path.isfile('inventory_log.csv') or os.path.getsize('inventory_log.csv') == 0:
-        # Write the header row to the log file if it's empty
-        log_writer.writerow(['Item', 'New Value', 'Timestamp', 'User'])
-
-
-
-    # Check if the inventory file exists, create it if it doesn't
-    if not os.path.isfile('inventory.csv') or os.path.getsize('inventory.csv') == 0:
-        with open('inventory.csv', 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['item_name', 'quantity', 'timestamp','user'])
-
-    # Check if the log file exists, create it if it doesn't
-    if not os.path.isfile('inventory_log.csv') or os.path.getsize('inventory_log.csv') == 0:
-        with open('inventory_log.csv', 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['old_name', 'new_name', 'old_quantity', 'new_quantity', 'old timestamp', 'new timestamp'])
-
-
-    # Create the menu bar
-    root.option_add('*tearOff', False)
-
     menu_bar = tk.Menu(root)
-
-    # Create the "File" menu
-    file_menu = tk.Menu(menu_bar)
-    menu_bar.add_cascade(label="File", menu=file_menu, )
-    # Add an item to the "File" menu
-    file_menu.add_command(label="Save", command=save)
-    file_menu.add_command(label="Add Item", command=lambda: open_add_item_window(inventory, inventoryList, log_file))
-    file_menu.add_command(label="Export PDF", command=lambda: export_to_pdf(inventory))  # Added Export PDF
-
-    # Create the "Help" menu
-    about_menu = tk.Menu(menu_bar)
-    menu_bar.add_cascade(label="Help", menu=about_menu, )
-    # Add an item to the "Help" menu
-    about_menu.add_command(label="About", command=aboutSection)
-
     root.config(menu=menu_bar)
 
-    # Configure rows
-    root.grid_rowconfigure(0, weight=0)
-    root.grid_rowconfigure(1, weight=0)
-    root.grid_rowconfigure(2, weight=0)
-    root.grid_rowconfigure(3, weight=0)
-    root.grid_rowconfigure(4, weight=0)   # New row for buttons
+    # File menu
+    file_menu = tk.Menu(menu_bar, tearoff=0)
+    menu_bar.add_cascade(label="File", menu=file_menu)
+    file_menu.add_command(label="Save", command=save)
+    file_menu.add_separator()
+    file_menu.add_command(label="Export PDF", command=lambda: export_to_pdf(inventory))
+    file_menu.add_separator()
+    file_menu.add_command(label="Create an Order", command=createOrder())
+    file_menu.add_separator()
+    file_menu.add_command(label="Quit", command=quit)
 
-    # Configure columns
+    # Help menu
+    help_menu = tk.Menu(menu_bar, tearoff=0)
+    menu_bar.add_cascade(label="Help", menu=help_menu)
+    help_menu.add_command(label="About", command=aboutSection)
+
+    # Configure rows and columns
+    root.grid_rowconfigure(0, weight=1)
+    root.grid_rowconfigure(1, weight=1)
+    root.grid_rowconfigure(2, weight=1)
+    root.grid_rowconfigure(3, weight=1)
+
     root.grid_columnconfigure(0, weight=1)
     root.grid_columnconfigure(1, weight=1)
     root.grid_columnconfigure(2, weight=1)
     root.grid_columnconfigure(3, weight=1)
-
-    addButton = tk.Button(root, text="Add Item", command=lambda: open_add_item_window(inventory, inventoryList, log_file))
-
-    saveButton = tk.Button(root, text="Save", command=save)
-    quitButton = tk.Button(root, text="Quit", command=quit)
-    exportButton = tk.Button(root, text="Export PDF", command=lambda: export_to_pdf(inventory))  # Added Export PDF button
-
-
-    addButton.grid(row=3, column=0, sticky=tk.W + tk.E, pady=5, padx=5)
-    saveButton.grid(row=3, column=1, sticky=tk.W + tk.E, pady=5, padx=5)  # Moved Save button to row 3
-    exportButton.grid(row=3, column=2, sticky=tk.W + tk.E, pady=5, padx=5)  # Moved Export PDF button to row 3
-    quitButton.grid(row=3, column=3, sticky=tk.W + tk.E, pady=5, padx=5)  # Moved Quit button to row 3
-
-
 
     inventoryList = ttk.Treeview(root, columns=("Item", "Quantity", "Last Update", 'User'), show="headings")
     inventoryList.heading("Item", text="Item")
     inventoryList.heading("Quantity", text="Quantity")
     inventoryList.heading("Last Update", text="Last Update")
     inventoryList.heading("User", text="User")
-    inventoryList.column("Item", width=150, anchor="center")
+    inventoryList.column("Item", width=250, anchor="w")
     inventoryList.column("Quantity", width=150, anchor="center")
     inventoryList.column("Last Update", width=150, anchor="center")
     inventoryList.column("User", width=150, anchor="center")
-    inventoryList.grid(row=2, rowspan=1, column=0, columnspan=5, sticky=tk.N + tk.S + tk.E + tk.W, pady=20, padx=20)
+    inventoryList.grid(row=0, rowspan=4, column=0, columnspan=4, sticky=tk.N + tk.S + tk.E + tk.W, pady=40, padx=20)
 
-    # Add this line to bind the double-click event to the on_item_double_click function
+    # Bind the double-click event to the on_item_double_click function
     inventoryList.bind("<Double-1>", lambda event: on_item_double_click(event, inventory, inventoryList, log_file))
 
+    # Load and display the application logo
+    logo_image = PhotoImage(file="logo.png").subsample(6, 6)
+    logo_label = tk.Label(root, image=logo_image)
+    logo_label.grid(row=4, rowspan=2, column=0, columnspan=2, sticky=tk.W + tk.E, padx=20, pady=20)
 
+    # Buttons for various actions
+    addButton = tk.Button(root, text="Add Item", command=lambda: open_add_item_window(inventory, inventoryList, log_file))
+    saveButton = tk.Button(root, text="Save", command=save)
+    exportButton = tk.Button(root, text="Export PDF", command=lambda: export_to_pdf(inventory))
+    quitButton = tk.Button(root, text="Quit", command=quit)
+
+    # Grid placement for buttons
+    addButton.grid(row=4, column=2, sticky=tk.W + tk.E, pady=5, padx=5)
+    saveButton.grid(row=4, column=3, sticky=tk.W + tk.E, pady=5, padx=5)
+    exportButton.grid(row=5, column=2, sticky=tk.W + tk.E, pady=5, padx=5)
+    quitButton.grid(row=5, column=3, sticky=tk.W + tk.E, pady=5, padx=5)
+
+    # Display the initial inventory
     printInventory(inventory, inventoryList, log_file)
 
+    # Start the main event loop
     root.mainloop()
     log_file.close()
 
-
+# Entry point for the application
 if __name__ == '__main__':
     main()
+
