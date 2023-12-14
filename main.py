@@ -18,6 +18,11 @@ def open_add_item_window(inventory, inventoryList, log_file):
     add_item_window.title("Add Item")
     addItem(inventory, inventoryList, add_item_window, log_file)
 
+# Function to open the "Create Order" window
+def open_create_order_window():
+    create_order_window = tk.Toplevel(root)
+    create_order_window.title("Create Order")
+    createOrder(create_order_window)
 
 # Function to add item to the inventory
 def addItem(inventory, inventoryList, add_item_window, log_file):
@@ -176,9 +181,74 @@ def changeQuantity(inventoryList, inventory, item_name, log_file=None):
         # After updating, print the inventory to reflect changes
         printInventory(inventory, inventoryList, log_file)
 
-#Function to create and order
-def createOrder():
-    print('Order Created')
+
+# Function to create an order
+# Function to create an order
+def createOrder(create_order_window):
+    orderNameEntry = tk.Entry(create_order_window)
+    poNumberEntry = tk.Entry(create_order_window)
+    dueDateEntry = tk.Entry(create_order_window)
+
+    orderNameEntry.grid(row=0, column=2, sticky=tk.W + tk.E)
+    poNumberEntry.grid(row=1, column=2, sticky=tk.W + tk.E)
+    dueDateEntry.grid(row=2, column=2, sticky=tk.W + tk.E)
+
+    def createOrderAction():
+        order_name = orderNameEntry.get()
+        po_number = poNumberEntry.get()
+        due_date = dueDateEntry.get()
+
+        if order_name and po_number and due_date:
+            # Write order details to a CSV file
+            with open('orders.csv', 'a', newline='') as csvfile:
+                writer = csv.writer(csvfile, delimiter=',')
+                writer.writerow([order_name, po_number, due_date])
+
+            messagebox.showinfo("Order Created", "Order created successfully.")
+            create_order_window.destroy()
+
+    createOrderButton = tk.Button(create_order_window, text="Create Order", command=createOrderAction)
+    createOrderButton.grid(row=3, column=1, sticky=tk.W + tk.E)
+
+
+
+# Function to open the "View Order" window
+def open_view_order_window():
+    view_order_window = tk.Toplevel(root)
+    view_order_window.title("View Order")
+    viewOrder(view_order_window)
+
+# Function to view an order
+# Function to view an order
+# Function to view orders
+def viewOrders():
+    view_orders_window = tk.Toplevel(root)
+    view_orders_window.title("View Orders")
+
+    # Create a Treeview to display order details
+    order_tree = ttk.Treeview(view_orders_window, columns=("Order Name", "PO Number", "Due Date"), show="headings")
+
+    order_tree.heading("Order Name", text="Order Name")
+    order_tree.heading("PO Number", text="PO Number")
+    order_tree.heading("Due Date", text="Due Date")
+
+    order_tree.pack(padx=10, pady=10)
+
+    # Read order data from the CSV file
+    try:
+        with open('orders.csv', 'r', newline='') as csvfile:
+            reader = csv.reader(csvfile, delimiter=',')
+            header = next(reader)  # Skip the header row
+            for row in reader:
+                order_tree.insert("", "end", values=row)
+    except FileNotFoundError:
+        messagebox.showinfo("No Orders", "No orders found.")
+
+    # Close the view orders window
+    close_button = tk.Button(view_orders_window, text="Close", command=view_orders_window.destroy)
+    close_button.pack()
+
+
 
 # Function to save the current state of the inventory
 def save():
@@ -266,10 +336,17 @@ def main():
     file_menu.add_command(label="Save", command=save)
     file_menu.add_separator()
     file_menu.add_command(label="Export PDF", command=lambda: export_to_pdf(inventory))
-    file_menu.add_separator()
-    file_menu.add_command(label="Create an Order", command=createOrder())
+
     file_menu.add_separator()
     file_menu.add_command(label="Quit", command=quit)
+
+    # Modify the Order menu in the main() function
+    order_menu = tk.Menu(menu_bar, tearoff=0)
+    menu_bar.add_cascade(label="Order", menu=order_menu)
+    order_menu.add_separator()
+    order_menu.add_command(label="Create an Order", command=open_create_order_window)
+    order_menu.add_command(label="View Orders", command=viewOrders)
+
 
     # Help menu
     help_menu = tk.Menu(menu_bar, tearoff=0)
@@ -302,7 +379,7 @@ def main():
     inventoryList.bind("<Double-1>", lambda event: on_item_double_click(event, inventory, inventoryList, log_file))
 
     # Load and display the application logo
-    logo_image = PhotoImage(file="logo.png").subsample(6, 6)
+    logo_image = PhotoImage(file="Inventory/logo.png").subsample(6, 6)
     logo_label = tk.Label(root, image=logo_image)
     logo_label.grid(row=4, rowspan=2, column=0, columnspan=2, sticky=tk.W + tk.E, padx=20, pady=20)
 
@@ -317,6 +394,8 @@ def main():
     saveButton.grid(row=4, column=3, sticky=tk.W + tk.E, pady=5, padx=5)
     exportButton.grid(row=5, column=2, sticky=tk.W + tk.E, pady=5, padx=5)
     quitButton.grid(row=5, column=3, sticky=tk.W + tk.E, pady=5, padx=5)
+
+
 
     # Display the initial inventory
     printInventory(inventory, inventoryList, log_file)
