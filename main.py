@@ -176,7 +176,7 @@ def changeQuantity(inventoryList, inventory, item_name, log_file=None):
             return
 
         # Update the inventory with the correct values
-        inventory[item_name] = (user_input, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), user_id)
+        inventory[item_name] = (user_input, datetime.datetime.now().strftime('%H:%M:%S %m-%d-%Y '), user_id)
 
         # After updating, print the inventory to reflect changes
         printInventory(inventory, inventoryList, log_file)
@@ -185,9 +185,14 @@ def changeQuantity(inventoryList, inventory, item_name, log_file=None):
 # Function to create an order
 # Function to create an order
 def createOrder(create_order_window):
+
     orderNameEntry = tk.Entry(create_order_window)
     poNumberEntry = tk.Entry(create_order_window)
     dueDateEntry = tk.Entry(create_order_window)
+
+    tk.Label(create_order_window, text="Order Name:").grid(row=0, column=0, sticky=tk.W)
+    tk.Label(create_order_window, text="PO Number:").grid(row=1, column=0, sticky=tk.W)
+    tk.Label(create_order_window, text="Due Date:").grid(row=2, column=0, sticky=tk.W)
 
     orderNameEntry.grid(row=0, column=2, sticky=tk.W + tk.E)
     poNumberEntry.grid(row=1, column=2, sticky=tk.W + tk.E)
@@ -280,7 +285,7 @@ def aboutSection():
 def export_to_pdf(inventory):
     try:
         # Create a new PDF document with portrait page orientation
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        timestamp = datetime.datetime.now().strftime('%S%Y-%M-%d_%H-%m')
         file_name = f"inventory_{timestamp}.pdf"
 
         pdf = SimpleDocTemplate(file_name, pagesize=landscape(letter))
